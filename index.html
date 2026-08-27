@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hub - YouTube Tùy Chỉnh</title>
+    <title>Smart Hub - Fix Camera Black</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -33,8 +33,9 @@
         #status-bar { background: #222; text-align: center; padding: 12px; font-weight: bold; color: #00ffcc; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 1000; border-top: 1px solid #444; }
         
         #camera-container { position: fixed; bottom: 60px; right: 10px; width: 140px; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid #00ffcc; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        video { display: none; }
-        canvas { width: 100%; height: auto; display: block; }
+        /* Cho phép video hiển thị trực tiếp để ép trình duyệt nhả khung hình đen */
+        video.input_video { width: 100%; height: auto; display: block; transform: scaleX(-1); }
+        canvas { display: none; } /* Tạm ẩn canvas nếu dùng video trực tiếp cho mượt */
     </style>
 </head>
 <body>
@@ -52,7 +53,6 @@
             <div class="page active" id="page-0">
                 <h3>Trình phát YouTube Tùy chỉnh</h3>
                 
-                <!-- Ô dán link YouTube -->
                 <div class="controls-box">
                     <input type="text" id="yt-link-input" class="input-url" placeholder="Dán link YouTube (vd: youtu.be/...)">
                     <button class="btn btn-blue" onclick="loadYouTubeVideo()">▶ Xem video này</button>
@@ -62,7 +62,6 @@
                     <button class="btn" onclick="startCamera()">📷 BẤM ĐỂ BẬT CAMERA AI</button>
                 </div>
 
-                <!-- Khung YouTube nhúng -->
                 <iframe id="yt-video" width="100%" height="250" src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
                 <p style="margin-top: 10px; color: #aaa;">✋ Mở tay: Phát | ✊ Nắm tay: Dừng</p>
             </div>
@@ -92,8 +91,8 @@
     <div id="status-bar">Trạng thái: Chưa bật camera</div>
     
     <div id="camera-container">
-        <video class="input_video"></video>
-        <canvas class="output_canvas" width="160" height="120"></canvas>
+        <!-- Đã ép hiển thị trực tiếp thẻ video thay vì canvas để tránh lỗi khung đen -->
+        <video class="input_video" autoplay playsinline muted></video>
     </div>
 
     <script>
@@ -104,15 +103,10 @@
         const zoomWrapper = document.getElementById('zoom-wrapper');
         const statusBar = document.getElementById('status-bar');
 
-        // --- HÀM TẢI VIDEO YOUTUBE THEO LINK ---
         function loadYouTubeVideo() {
             const urlInput = document.getElementById('yt-link-input').value.trim();
-            if (!urlInput) {
-                alert("Vui lòng dán link YouTube vào ô trống!");
-                return;
-            }
+            if (!urlInput) { alert("Vui lòng dán link YouTube!"); return; }
 
-            // Thuật toán bóc tách ID video từ các dạng link YouTube khác nhau
             let videoId = "";
             if (urlInput.includes("youtu.be/")) {
                 videoId = urlInput.split("youtu.be/")[1]?.split("?")[0];
@@ -121,15 +115,14 @@
             } else if (urlInput.includes("embed/")) {
                 videoId = urlInput.split("embed/")[1]?.split("?")[0];
             } else {
-                videoId = urlInput; // Trường hợp người dùng gõ thẳng ID video
+                videoId = urlInput;
             }
 
             if (videoId) {
-                const embedUrl = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1`;
-                document.getElementById('yt-video').src = embedUrl;
+                document.getElementById('yt-video').src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1`;
                 statusBar.innerText = "Đã tải video thành công!";
             } else {
-                alert("Link YouTube không hợp lệ. Vui lòng thử lại!");
+                alert("Link YouTube không hợp lệ!");
             }
         }
 
@@ -142,8 +135,7 @@
         }
 
         function switchTab() {
-            let nextTab = (currentTab + 1) % 3;
-            changeTabManually(nextTab);
+            changeTabManually((currentTab + 1) % 3);
         }
 
         function applyZoom() {
@@ -155,84 +147,97 @@
             iframe.postMessage('{"event":"command","func":"' + cmd + '","args":""}', '*');
         }
 
-        // --- KHỞI ĐỘNG CAMERA AI ---
-        function startCamera() {
-            statusBar.innerText = "Đang khởi động camera...";
+        // --- KHỞI ĐỘNG CAMERA TRỰC TIẾP ---
+        async function startCamera() {
+            statusBar.innerText = "Đang kết nối camera...";
             const videoElement = document.getElementsByClassName('input_video')[0];
-            const canvasElement = document.getElementsByClassName('output_canvas')[0];
-            const canvasCtx = canvasElement.getContext('2d');
 
-            const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-            hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
-            
-            hands.onResults((results) => {
-                canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-                canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-                
-                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                    const lm = results.multiHandLandmarks[0];
-                    const isIndexOpen = lm[8].y < lm[6].y;
-                    const isMiddleOpen = lm[12].y < lm[10].y;
-                    const isRingOpen = lm[16].y < lm[14].y;
-                    const isPinkyOpen = lm[20].y < lm[18].y;
+            try {
+                // Xin quyền trực tiếp qua WebRTC API để đảm bảo hiện hình ảnh
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 320, height: 240, facingMode: "user" } 
+                });
+                videoElement.srcObject = stream;
+                await videoElement.play();
 
-                    const now = Date.now();
-                    let actionName = "Đang thấy tay...";
+                statusBar.innerText = "Đang khởi tạo AI nhận diện tay...";
 
-                    if (isIndexOpen && isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                        actionName = "✌️ Đổi Tab";
-                        if (now - lastActionTime > 1500) { switchTab(); lastActionTime = now; }
-                    } 
-                    else if (isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen) {
-                        actionName = "✋ Phát video / Cuộn xuống";
-                        if (now - lastActionTime > 1000) {
-                            if (currentTab === 0) ytCommand('playVideo');
-                            else window.scrollBy({ top: 250, behavior: 'smooth' });
-                            lastActionTime = now;
+                const hands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+                hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+
+                hands.onResults((results) => {
+                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                        const lm = results.multiHandLandmarks[0];
+                        const isIndexOpen = lm[8].y < lm[6].y;
+                        const isMiddleOpen = lm[12].y < lm[10].y;
+                        const isRingOpen = lm[16].y < lm[14].y;
+                        const isPinkyOpen = lm[20].y < lm[18].y;
+
+                        const now = Date.now();
+                        let actionName = "Đã nhận diện bàn tay!";
+
+                        if (isIndexOpen && isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                            actionName = "✌️ Đổi Tab";
+                            if (now - lastActionTime > 1500) { switchTab(); lastActionTime = now; }
+                        } 
+                        else if (isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen) {
+                            actionName = "✋ Phát video / Cuộn xuống";
+                            if (now - lastActionTime > 1000) {
+                                if (currentTab === 0) ytCommand('playVideo');
+                                else window.scrollBy({ top: 250, behavior: 'smooth' });
+                                lastActionTime = now;
+                            }
                         }
-                    }
-                    else if (isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                        actionName = "☝️ Cuộn lên";
-                        if (now - lastActionTime > 1000) {
-                            if (currentTab !== 0) window.scrollBy({ top: -250, behavior: 'smooth' });
-                            lastActionTime = now;
+                        else if (isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                            actionName = "☝️ Cuộn lên";
+                            if (now - lastActionTime > 1000) {
+                                if (currentTab !== 0) window.scrollBy({ top: -250, behavior: 'smooth' });
+                                lastActionTime = now;
+                            }
                         }
-                    }
-                    else if (isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
-                        actionName = "🤘 Phóng to";
-                        if (now - lastActionTime > 600) {
-                            currentZoom = Math.min(currentZoom + 0.2, 2.5);
-                            applyZoom(); lastActionTime = now;
+                        else if (isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
+                            actionName = "🤘 Phóng to";
+                            if (now - lastActionTime > 600) {
+                                currentZoom = Math.min(currentZoom + 0.2, 2.5);
+                                applyZoom(); lastActionTime = now;
+                            }
                         }
-                    }
-                    else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
-                        actionName = "🤙 Thu nhỏ";
-                        if (now - lastActionTime > 600) {
-                            currentZoom = Math.max(currentZoom - 0.2, 0.5);
-                            applyZoom(); lastActionTime = now;
+                        else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
+                            actionName = "🤙 Thu nhỏ";
+                            if (now - lastActionTime > 600) {
+                                currentZoom = Math.max(currentZoom - 0.2, 0.5);
+                                applyZoom(); lastActionTime = now;
+                            }
                         }
-                    }
-                    else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                        actionName = "✊ Tạm dừng video";
-                        if (now - lastActionTime > 1000 && currentTab === 0) {
-                            ytCommand('pauseVideo'); lastActionTime = now;
+                        else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                            actionName = "✊ Tạm dừng video";
+                            if (now - lastActionTime > 1000 && currentTab === 0) {
+                                ytCommand('pauseVideo'); lastActionTime = now;
+                            }
                         }
+                        statusBar.innerText = actionName;
+                    } else {
+                        statusBar.innerText = "Đang tìm bàn tay trước camera...";
                     }
-                    statusBar.innerText = actionName;
-                } else {
-                    statusBar.innerText = "Đang tìm bàn tay...";
+                });
+
+                // Gửi khung hình liên tục vào model MediaPipe
+                async function sendFrameToAI() {
+                    if (videoElement.readyState >= 2) {
+                        await hands.send({ image: videoElement });
+                    }
+                    requestAnimationFrame(sendFrameToAI);
                 }
-            });
+                sendFrameToAI();
 
-            const camera = new Camera(videoElement, {
-                onFrame: async () => { await hands.send({ image: videoElement }); },
-                width: 160, height: 120
-            });
-            camera.start().then(() => {
-                statusBar.innerText = "Camera sẵn sàng! Đưa tay lên để điều khiển.";
-            }).catch(err => {
-                statusBar.innerText = "Lỗi camera: Hãy cấp quyền trong trình duyệt!";
-            });
+                statusBar.innerText = "Camera đã hoạt động! Hãy đưa tay lên.";
+
+            } catch (err) {
+                statusBar.innerText = "Lỗi: Không mở được camera. Hãy kiểm tra quyền trình duyệt!";
+                console.error(err);
+            }
         }
 
         // Xử lý đọc file PDF/TXT
