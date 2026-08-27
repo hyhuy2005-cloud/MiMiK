@@ -3,76 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hub - PDF Canvas & Fix AI</title>
+    <title>Smart Hub - PDF Canvas & Fix Font</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; background: #1a1a1a; color: white; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; overflow: hidden; }
+        #nav { display: flex; background: #333; padding: 12px; justify-content: space-around; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .tab { padding: 10px 20px; border-radius: 5px; font-weight: bold; opacity: 0.5; transition: 0.3s; cursor: pointer; }
+        .tab.active { background: #007bff; opacity: 1; }
+        
+        #content { flex: 1; overflow-y: auto; padding: 20px; position: relative; scroll-behavior: smooth; }
+        #zoom-wrapper { transform-origin: top center; transition: transform 0.3s ease; }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        .book-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 8px; }
+        .btn { background: #00ffcc; color: #000; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .btn-blue { background: #007bff; color: white; }
+        .input-url { flex: 1; min-width: 150px; padding: 8px; border-radius: 5px; border: 1px solid #555; background: #333; color: white; font-size: 14px; }
+        
+        #book-content { font-size: 18px; line-height: 1.8; color: #e0e0e0; padding: 10px; background: #2a2a2a; border-radius: 8px; min-height: 300px; white-space: pre-wrap; }
+        
+        #status-bar { background: #222; text-align: center; padding: 10px; font-weight: bold; color: #00ffcc; border-top: 1px solid #444; z-index: 10; position: fixed; bottom: 0; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px;}
+        .status-text { flex: 1; }
+        .camera-toggle { padding: 6px 10px; font-size: 12px; border-radius: 4px; background: #444; color: white;}
+        .camera-toggle.on { background: #ff3333; color: white; }
+
+        #camera-container { position: fixed; bottom: 60px; right: 10px; width: 120px; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid #555; z-index: 1000; display: none;}
+        video.input_video { width: 100%; height: auto; display: block; transform: scaleX(-1); }
+        
+        /* CSS cho trang PDF đẹp như đọc sách thật */
+        canvas.pdf-page-canvas { width: 100%; max-width: 800px; margin: 0 auto 20px auto; display: block; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border-radius: 4px; background-color: white; border: 1px solid #ccc;}
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
     </script>
-    <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
-        
-        #nav { display: flex; background: #333; padding: 12px; justify-content: space-around; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .tab { padding: 10px 20px; border-radius: 5px; font-weight: bold; opacity: 0.5; cursor: pointer; }
-        .tab.active { background: #007bff; opacity: 1; }
-        
-        #content { flex: 1; padding: 20px; padding-bottom: 150px; }
-        #zoom-wrapper { transform-origin: top center; transition: transform 0.3s ease; }
-        
-        .page { display: none; }
-        .page.active { display: block; }
-        
-        .controls-box { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 8px; }
-        .btn { background: #00ffcc; color: #000; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .btn-blue { background: #007bff; color: white; }
-        .input-url { flex: 1; min-width: 180px; padding: 10px; border-radius: 5px; border: 1px solid #555; background: #333; color: white; font-size: 14px; }
-        
-        #book-content { font-size: 18px; line-height: 1.8; color: #e0e0e0; padding: 15px; background: #2a2a2a; border-radius: 8px; min-height: 300px; white-space: pre-wrap; }
-        
-        #status-bar { background: #222; text-align: center; padding: 12px; font-weight: bold; color: #00ffcc; position: fixed; bottom: 0; left: 0; width: 100%; z-index: 1000; border-top: 1px solid #444; }
-        
-        #camera-container { position: fixed; bottom: 60px; right: 10px; width: 140px; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid #00ffcc; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        video.input_video { width: 100%; height: auto; display: block; transform: scaleX(-1); }
-    </style>
 </head>
 <body>
 
     <div id="nav">
         <div class="tab active" id="tab-0" onclick="changeTabManually(0)">📺 YouTube</div>
-        <div class="tab" id="tab-1" onclick="changeTabManually(1)">📖 Đọc Sách</div>
+        <div class="tab" id="tab-1" onclick="changeTabManually(1)">📖 Đọc Sách / PDF</div>
         <div class="tab" id="tab-2" onclick="changeTabManually(2)">🌐 Lướt Web</div>
     </div>
 
     <div id="content">
         <div id="zoom-wrapper">
             
-            <!-- Trang YouTube -->
             <div class="page active" id="page-0">
-                <h3>Trình phát YouTube Tùy chỉnh</h3>
-                <div class="controls-box">
-                    <input type="text" id="yt-link-input" class="input-url" placeholder="Dán link YouTube (vd: youtu.be/...)">
-                    <button class="btn btn-blue" onclick="loadYouTubeVideo()">▶ Xem video này</button>
-                </div>
+                <h3>YouTube Player</h3>
                 <div style="margin-bottom: 15px;">
-                    <button class="btn" onclick="startCamera()">📷 BẤM ĐỂ BẬT CAMERA AI</button>
+                    <button id="toggle-camera-yt" class="btn" onclick="toggleCameraAI()">📷 Bật AI Camera (Tiết kiệm pin)</button>
                 </div>
                 <iframe id="yt-video" width="100%" height="250" src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-                <p style="margin-top: 10px; color: #aaa;">✋ Phát | ✊ Dừng | ☝️ Cuộn lên | ✌️ Đổi tab</p>
+                <p>✋ Phát | ✊ Dừng & Tắt Camera | ☝️ Cuộn lên | ✌️ Đổi tab</p>
             </div>
 
-            <!-- Trang Đọc Sách -->
             <div class="page" id="page-1">
                 <h3>Trình đọc Sách & File PDF</h3>
-                <div class="controls-box">
+                <div class="book-controls">
                     <input type="file" id="file-input" accept=".txt,.pdf" style="display: none;">
                     <button class="btn" onclick="document.getElementById('file-input').click()">📂 Tải file TXT hoặc PDF</button>
+                    <input type="text" id="url-input" class="input-url" placeholder="Link file văn bản...">
+                    <button class="btn btn-blue" onclick="loadBookFromUrl()">🌐 Tải từ mạng</button>
                 </div>
-                <p style="font-size: 14px; color: #888;">🤘 Phóng to | 🤙 Thu nhỏ | ✋ Cuộn xuống | ☝️ Cuộn lên</p>
+                <p style="font-size: 14px; color: #888;">🤘 Phóng to | 🤙 Thu nhỏ | ✋ Cuộn xuống | ☝️ Cuộn lên | ✊ Dừng</p>
                 <div id="book-content">Hãy tải file TXT hoặc PDF từ máy của bạn để bắt đầu đọc.</div>
             </div>
 
-            <!-- Trang Lướt Web -->
             <div class="page" id="page-2">
                 <h3>Trang Web Dài</h3>
                 <div style="height: 1200px; background: linear-gradient(#444, #111); padding: 10px;">
@@ -83,7 +83,10 @@
         </div>
     </div>
 
-    <div id="status-bar">Trạng thái: Chưa bật camera</div>
+    <div id="status-bar">
+        <span id="status-text" class="status-text">Trạng thái: Tắt (Giơ 👍 để bật hoặc bấm nút)</span>
+        <button id="camera-toggle-btn" class="camera-toggle" onclick="toggleCameraAI()">📷 Bật AI</button>
+    </div>
     
     <div id="camera-container">
         <video class="input_video" autoplay playsinline muted></video>
@@ -93,26 +96,77 @@
         let currentTab = 0;
         let currentZoom = 1.0;
         let lastActionTime = 0; 
-        const zoomWrapper = document.getElementById('zoom-wrapper');
-        const statusBar = document.getElementById('status-bar');
+        let isCameraOn = false; // Trạng thái camera mặc định
+        let stream = null; // Biến lưu stream camera
 
-        // Logic tải video YouTube
-        function loadYouTubeVideo() {
-            const urlInput = document.getElementById('yt-link-input').value.trim();
-            if (!urlInput) { alert("Vui lòng dán link YouTube!"); return; }
-            let videoId = "";
-            if (urlInput.includes("youtu.be/")) videoId = urlInput.split("youtu.be/")[1]?.split("?")[0];
-            else if (urlInput.includes("watch?v=")) videoId = urlInput.split("watch?v=")[1]?.split("&")[0];
-            else if (urlInput.includes("embed/")) videoId = urlInput.split("embed/")[1]?.split("?")[0];
-            else videoId = urlInput;
-            
-            if (videoId) {
-                document.getElementById('yt-video').src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1`;
-                statusBar.innerText = "Đã tải video thành công!";
-            } else alert("Link YouTube không hợp lệ!");
+        const contentDiv = document.getElementById('content');
+        const zoomWrapper = document.getElementById('zoom-wrapper');
+        const statusBarText = document.getElementById('status-text');
+        const cameraToggleBtn = document.getElementById('camera-toggle-btn');
+        const cameraContainer = document.getElementById('camera-container');
+        const ytToggleButton = document.getElementById('toggle-camera-yt');
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+
+        // Hàm bật/tắt camera AI (toggle)
+        function toggleCameraAI() {
+            if (isCameraOn) {
+                stopCameraStream();
+            } else {
+                startCameraStream();
+            }
         }
 
-        // Logic đổi tab và UI
+        // Bật camera
+        async function startCameraStream() {
+            statusBarText.innerText = "Đang xin quyền camera...";
+            const videoElement = document.getElementsByClassName('input_video')[0];
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                videoElement.srcObject = stream;
+                await videoElement.play();
+                
+                hands.start(); // Khởi động AI
+                isCameraOn = true;
+                updateCameraUI();
+            } catch (err) {
+                statusBarText.innerText = "Lỗi: Hãy cấp quyền camera!";
+                isCameraOn = false;
+                updateCameraUI();
+            }
+        }
+
+        // Tắt camera
+        function stopCameraStream() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop()); // Tắt các track camera
+            }
+            document.getElementsByClassName('input_video')[0].srcObject = null;
+            hands.stop(); // Dừng AI
+            isCameraOn = false;
+            updateCameraUI();
+        }
+
+        // Cập nhật giao diện theo trạng thái camera
+        function updateCameraUI() {
+            if (isCameraOn) {
+                statusBarText.innerText = "Camera sẵn sàng! Đưa tay lên.";
+                statusBarText.style.color = "#00ffcc";
+                cameraToggleBtn.innerText = "Tắt Camera";
+                cameraToggleBtn.classList.add('on');
+                cameraContainer.style.display = "block"; // Hiện mini-map
+                ytToggleButton.innerText = "Tắt AI Camera (Đang bật)";
+                ytToggleButton.style.background = "#ff3333";
+            } else {
+                statusBarText.innerText = "Trạng thái: Tắt (Giơ 👍 hoặc bấm nút để bật)";
+                statusBarText.style.color = "#fff";
+                cameraToggleBtn.innerText = "Bật Camera";
+                cameraToggleBtn.classList.remove('on');
+                cameraContainer.style.display = "none"; // Ẩn mini-map
+                ytToggleButton.innerText = "📷 Bật AI Camera (Tiết kiệm pin)";
+                ytToggleButton.style.background = "#00ffcc";
+            }
+        }
+
         function changeTabManually(index) {
             document.getElementById(`tab-${currentTab}`).classList.remove('active');
             document.getElementById(`page-${currentTab}`).classList.remove('active');
@@ -120,149 +174,122 @@
             document.getElementById(`tab-${currentTab}`).classList.add('active');
             document.getElementById(`page-${currentTab}`).classList.add('active');
         }
+
         function switchTab() { changeTabManually((currentTab + 1) % 3); }
         function applyZoom() { zoomWrapper.style.transform = `scale(${currentZoom})`; }
         function ytCommand(cmd) { document.getElementById("yt-video").contentWindow.postMessage('{"event":"command","func":"' + cmd + '","args":""}', '*'); }
 
-        // --- CAMERA & AI GESTURE RECOGNITION ---
-        async function startCamera() {
-            statusBar.innerText = "Đang xin quyền camera...";
-            const videoElement = document.getElementsByClassName('input_video')[0];
-            let isModelLoaded = false;
+        // --- CAMERA & AI GESTURE RECOGNITION (FIXED AI LOOP) ---
+        async function startAI() {
+            hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+            hands.onResults((results) => {
+                const now = Date.now();
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const lm = results.multiHandLandmarks[0];
+                    const isIndexOpen = lm[8].y < lm[6].y;
+                    const isMiddleOpen = lm[12].y < lm[10].y;
+                    const isRingOpen = lm[16].y < lm[14].y;
+                    const isPinkyOpen = lm[20].y < lm[18].y;
+                    // landmarks[4].y < landmarks[3].y (mở tay, ngón cái hướng lên)
+                    const isThumbOpen = lm[4].y < lm[3].y; 
 
-            try {
-                // Bật camera nhẹ nhàng, không ép buộc kích thước để tương thích mọi dòng máy
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                videoElement.srcObject = stream;
-                await videoElement.play();
+                    let actionName = "Đang xem...";
 
-                statusBar.innerText = "Đang tải mô hình AI (Lần đầu sẽ mất vài giây)...";
-
-                const hands = new Hands({
-                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-                });
-                
-                hands.setOptions({ 
-                    maxNumHands: 1, 
-                    modelComplexity: 0, // Mức 0 chạy nhẹ và nhanh nhất cho điện thoại
-                    minDetectionConfidence: 0.5, 
-                    minTrackingConfidence: 0.5 
-                });
-
-                hands.onResults((results) => {
-                    if (!isModelLoaded) {
-                        isModelLoaded = true;
-                        statusBar.innerText = "AI đã sẵn sàng! Đưa tay lên để điều khiển.";
+                    // 👍 Giơ ngón cái -> Bật Camera (Tùy chọn)
+                    if(isThumbOpen && !isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                        actionName = "👍 Bật AI Camera";
+                        if (!isCameraOn) startCameraStream();
+                        lastActionTime = now;
                     }
-
-                    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                        const lm = results.multiHandLandmarks[0];
-                        const isIndexOpen = lm[8].y < lm[6].y;
-                        const isMiddleOpen = lm[12].y < lm[10].y;
-                        const isRingOpen = lm[16].y < lm[14].y;
-                        const isPinkyOpen = lm[20].y < lm[18].y;
-
-                        const now = Date.now();
-                        let actionName = "Đã nhận diện bàn tay...";
-
-                        if (isIndexOpen && isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                            actionName = "✌️ Đổi Tab";
-                            if (now - lastActionTime > 1500) { switchTab(); lastActionTime = now; }
-                        } 
-                        else if (isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen) {
-                            actionName = "✋ Phát / Cuộn xuống";
-                            if (now - lastActionTime > 1000) {
-                                if (currentTab === 0) ytCommand('playVideo');
-                                else window.scrollBy({ top: 300, behavior: 'smooth' });
-                                lastActionTime = now;
-                            }
-                        }
-                        else if (isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                            actionName = "☝️ Cuộn lên";
-                            if (now - lastActionTime > 1000) {
-                                if (currentTab !== 0) window.scrollBy({ top: -300, behavior: 'smooth' });
-                                lastActionTime = now;
-                            }
-                        }
-                        else if (isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
-                            actionName = "🤘 Phóng to";
-                            if (now - lastActionTime > 600) {
-                                currentZoom = Math.min(currentZoom + 0.2, 2.5);
-                                applyZoom(); lastActionTime = now;
-                            }
-                        }
-                        else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
-                            actionName = "🤙 Thu nhỏ";
-                            if (now - lastActionTime > 600) {
-                                currentZoom = Math.max(currentZoom - 0.2, 0.5);
-                                applyZoom(); lastActionTime = now;
-                            }
-                        }
-                        else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                            actionName = "✊ Tạm dừng video";
-                            if (now - lastActionTime > 1000 && currentTab === 0) {
-                                ytCommand('pauseVideo'); lastActionTime = now;
-                            }
-                        }
-                        statusBar.innerText = actionName;
-                    } else {
-                        statusBar.innerText = "Đang tìm bàn tay...";
-                    }
-                });
-
-                // CƠ CHẾ ĐẨY KHUNG HÌNH (Mới - Chống Lag)
-                let lastVideoTime = -1;
-                async function sendFrameToAI() {
-                    if (videoElement.readyState >= 2 && videoElement.currentTime !== lastVideoTime) {
-                        lastVideoTime = videoElement.currentTime;
-                        try {
-                            await hands.send({ image: videoElement });
-                        } catch(e) {
-                            console.error("Lỗi gửi ảnh vào AI:", e);
+                    // ✊ Nắm tay -> Tắt Camera nếu đang bật & Dừng video
+                    else if (!isThumbOpen && !isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                        actionName = "✊ Tắt AI & Tạm dừng";
+                        if (now - lastActionTime > 1000) {
+                            if (currentTab === 0) ytCommand('pauseVideo');
+                            if (isCameraOn) stopCameraStream();
+                            lastActionTime = now;
                         }
                     }
-                    requestAnimationFrame(sendFrameToAI);
+                    // Các cử chỉ điều khiển khác
+                    else if (isIndexOpen && isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                        actionName = "✌️ Đổi Tab";
+                        if (now - lastActionTime > 1500) { switchTab(); lastActionTime = now; }
+                    } 
+                    else if (isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen) {
+                        actionName = "✋ Phát / Cuộn xuống";
+                        if (now - lastActionTime > 1000) {
+                            if (currentTab === 0) ytCommand('playVideo');
+                            else contentDiv.scrollBy({ top: 300, behavior: 'smooth' });
+                            lastActionTime = now;
+                        }
+                    }
+                    else if (isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                        actionName = "☝️ Cuộn lên";
+                        if (now - lastActionTime > 1000) {
+                            if (currentTab !== 0) contentDiv.scrollBy({ top: -300, behavior: 'smooth' });
+                            lastActionTime = now;
+                        }
+                    }
+                    else if (isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
+                        actionName = "🤘 Phóng to";
+                        if (now - lastActionTime > 600) {
+                            currentZoom = Math.min(currentZoom + 0.2, 2.5);
+                            applyZoom(); lastActionTime = now;
+                        }
+                    }
+                    else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
+                        actionName = "🤙 Thu nhỏ";
+                        if (now - lastActionTime > 600) {
+                            currentZoom = Math.max(currentZoom - 0.2, 0.5);
+                            applyZoom(); lastActionTime = now;
+                        }
+                    }
+                    statusBarText.innerText = actionName;
+                    statusBarText.style.color = "#00ffcc";
+                } else {
+                    statusBarText.innerText = "Đang tìm tay trước camera...";
+                    statusBarText.style.color = "#888";
                 }
-                sendFrameToAI(); // Bắt đầu vòng lặp an toàn
+            });
 
-            } catch (err) {
-                statusBar.innerText = "Lỗi: " + err.message;
+            // CƠ CHẾ ĐẨY KHUNG HÌNH (Fix loop lag)
+            let lastVideoTime = -1;
+            const videoElement = document.getElementsByClassName('input_video')[0];
+            async function sendFrameToAI() {
+                if (isCameraOn && videoElement.readyState >= 2 && videoElement.currentTime !== lastVideoTime) {
+                    lastVideoTime = videoElement.currentTime;
+                    try {
+                        await hands.send({ image: videoElement });
+                    } catch(e) {}
+                }
+                requestAnimationFrame(sendFrameToAI);
             }
+            requestAnimationFrame(sendFrameToAI);
         }
+        startAI(); // Khởi động AI loop ngay từ đầu
 
-        // --- XỬ LÝ ĐỌC FILE PDF / TXT BẰNG CANVAS CỦA BẠN ---
+        updateCameraUI(); // Cập nhật giao diện camera mặc định
+
+        // --- XỬ LÝ ĐỌC FILE TXT / PDF BẰNG CANVAS CỦA BẠN (ADDED CLASS) ---
         document.getElementById('file-input').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
             const bookContentDiv = document.getElementById('book-content');
-            
             bookContentDiv.innerHTML = "<p style='text-align: center; color: #00ffcc;'>Đang render tài liệu, vui lòng chờ...</p>";
-
             if (file.type === "application/pdf" || file.name.endsWith('.pdf')) {
                 try {
                     const arrayBuffer = await file.arrayBuffer();
                     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
                     const pdf = await loadingTask.promise;
-                    
                     bookContentDiv.innerHTML = ""; 
-
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const page = await pdf.getPage(i);
                         const viewport = page.getViewport({ scale: 1.5 }); 
-
                         const canvas = document.createElement('canvas');
                         const context = canvas.getContext('2d');
                         canvas.height = viewport.height;
                         canvas.width = viewport.width;
-                        
-                        canvas.style.width = "100%"; 
-                        canvas.style.maxWidth = "800px"; 
-                        canvas.style.margin = "0 auto 20px auto";
-                        canvas.style.display = "block";
-                        canvas.style.boxShadow = "0 5px 15px rgba(0,0,0,0.5)"; 
-                        canvas.style.borderRadius = "4px";
-                        canvas.style.backgroundColor = "white";
-
+                        canvas.classList.add('pdf-page-canvas'); // Thêm class để áp dụng CSS
                         const renderContext = { canvasContext: context, viewport: viewport };
                         await page.render(renderContext).promise;
                         bookContentDiv.appendChild(canvas);
