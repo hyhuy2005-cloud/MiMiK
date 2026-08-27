@@ -315,7 +315,7 @@
             reader.readAsDataURL(file);
         }
 
-        // 2. GEMINI VISION AI CALLER (Fixed Model Endpoint)
+        // 2. GEMINI VISION AI CALLER (Updated to gemini-3.7-flash)
         async function analyzeWithAI(type) {
             const apiKey = document.getElementById('api-key').value.trim();
             const loading = document.getElementById('loading');
@@ -344,8 +344,8 @@
             }
 
             try {
-                // Đã cập nhật sang model gemini-2.5-flash mới nhất ổn định
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                // Đã chuyển sang model gemini-3.7-flash chuẩn mới nhất
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
