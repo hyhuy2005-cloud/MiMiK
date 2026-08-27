@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Hub - Đọc Sách & PDF</title>
+    <!-- Thư viện nhận diện tay MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <!-- Thư viện đọc file PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>
+        // Cấu hình worker cho PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    </script>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        #nav { display: flex; background: #333; padding: 10px; justify-content: space-around; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .tab { padding: 10px 20px; border-radius: 5px; font-weight: bold; opacity: 0.5; transition: 0.3s; }
+        .tab.active { background: #007bff; opacity: 1; }
+        
+        #content { flex: 1; overflow-y: auto; padding: 20px; position: relative; scroll-behavior: smooth; }
+        #zoom-wrapper { transform-origin: top center; transition: transform 0.3s ease; }
+        
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        .book-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 8px; }
+        .btn { background: #00ffcc; color: #000; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn-blue { background: #007bff; color: white; }
+        .input-url { flex: 1; min-width: 150px; padding: 8px; border-radius: 5px; border: 1px solid #555; background: #333; color: white; }
+        
+        #book-content { font-size: 18px; line-height: 1.8; color: #e0e0e0; padding: 10px; background: #2a2a2a; border-radius: 8px; min-height: 300px; white-space: pre-wrap; }
+        
+        #status-bar { background: #222; text-align: center; padding: 10px; font-weight: bold; color: #00ffcc; border-top: 1px solid #444; z-index: 10;}
+        #camera-container { position: fixed; bottom: 60px; right: 10px; width: 120px; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid #555; z-index: 1000; }
+        video { display: none; }
+        canvas { width: 100%; height: auto; display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="nav">
+        <div class="tab active" id="tab-0">📺 YouTube</div>
+        <div class="tab" id="tab-1">📖 Đọc Sách / PDF</div>
+        <div class="tab" id="tab-2">🌐 Lướt Web</div>
+    </div>
+
+    <div id="content">
+        <div id="zoom-wrapper">
+            
+            <!-- Trang YouTube -->
+            <div class="page active" id="page-0">
+                <h3>YouTube Player</h3>
+                <iframe id="yt-video" width="100%" height="250" src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                <p>✋ Mở tay: Phát | ✊ Nắm tay: Dừng</p>
+            </div>
+
+            <!-- Trang Đọc Sách / PDF -->
+            <div class="page" id="page-1">
+                <h3>Trình đọc Sách & File PDF</h3>
+                
+                <div class="book-controls">
+                    <!-- Hỗ trợ cả .txt và .pdf -->
+                    <input type="file" id="file-input" accept=".txt,.pdf" style="display: none;">
+                    <button class="btn" onclick="document.getElementById('file-input').click()">📂 Tải file TXT hoặc PDF</button>
+                    
+                    <input type="text" id="url-input" class="input-url" placeholder="Link file văn bản...">
+                    <button class="btn btn-blue" onclick="loadBookFromUrl()">🌐 Tải từ mạng</button>
+                </div>
+                <p style="font-size: 14px; color: #888;">🤘 Phóng to | 🤙 Thu nhỏ | ✋ Cuộn xuống | ☝️ Cuộn lên</p>
+
+                <div id="book-content">
+Hãy bấm nút "Tải file TXT hoặc PDF" để chọn một tài liệu PDF từ điện thoại của bạn. 
+Trang web sẽ tự động trích xuất chữ để bạn đọc và điều khiển không chạm!
+                </div>
+            </div>
+
+            <!-- Trang Lướt Web -->
+            <div class="page" id="page-2">
+                <h3>Trang Web Dài</h3>
+                <div style="height: 1200px; background: linear-gradient(#444, #111); padding: 10px;">
+                    (Khu vực giả lập để test cuộn và zoom)
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="status-bar">Chờ khởi động Camera...</div>
+    
+    <div id="camera-container">
+        <video class="input_video"></video>
+        <canvas class="output_canvas" width="160" height="120"></canvas>
+    </div>
+
+    <script>
+        let currentTab = 0;
+        let currentZoom = 1.0;
+        let lastActionTime = 0; 
+        
+        const contentDiv = document.getElementById('content');
+        const zoomWrapper = document.getElementById('zoom-wrapper');
+        const statusBar = document.getElementById('status-bar');
+
+        // --- XỬ LÝ UPLOAD FILE (HỖ TRỢ CẢ TXT VÀ PDF) ---
+        document.getElementById('file-input').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const bookContentDiv = document.getElementById('book-content');
+            bookContentDiv.textContent = "Đang xử lý file, vui lòng đợi...";
+
+            if (file.type === "application/pdf" || file.name.endsWith('.pdf')) {
+                // Xử lý đọc file PDF
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                    const pdf = await loadingTask.promise;
+                    
+                    let fullText = "";
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += `--- Trang ${i} ---\n` + pageText + "\n\n";
+                    }
+                    bookContentDiv.textContent = fullText;
+                } catch (error) {
+                    bookContentDiv.textContent = "Lỗi khi đọc file PDF: " + error.message;
+                }
+            } else {
+                // Xử lý đọc file TXT thông thường
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    bookContentDiv.textContent = event.target.result;
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Tải từ URL
+        function loadBookFromUrl() {
+            const url = document.getElementById('url-input').value;
+            if (!url) { alert("Vui lòng nhập link!"); return; }
+            document.getElementById('book-content').textContent = "Đang tải dữ liệu...";
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error("Không thể tải file");
+                    return response.text();
+                })
+                .then(text => { document.getElementById('book-content').textContent = text; })
+                .catch(error => {
+                    document.getElementById('book-content').textContent = "Lỗi: Không tải được từ link này do chính sách bảo mật trình duyệt. Hãy tải file về máy rồi dùng nút tải file lên.";
+                });
+        }
+
+        // --- ĐIỀU KHIỂN UI ---
+        function switchTab() {
+            document.getElementById(`tab-${currentTab}`).classList.remove('active');
+            document.getElementById(`page-${currentTab}`).classList.remove('active');
+            currentTab = (currentTab + 1) % 3;
+            document.getElementById(`tab-${currentTab}`).classList.add('active');
+            document.getElementById(`page-${currentTab}`).classList.add('active');
+        }
+
+        function applyZoom() {
+            zoomWrapper.style.transform = `scale(${currentZoom})`;
+        }
+
+        function ytCommand(cmd) {
+            const iframe = document.getElementById("yt-video").contentWindow;
+            iframe.postMessage('{"event":"command","func":"' + cmd + '","args":""}', '*');
+        }
+
+        // --- XỬ LÝ CAMERA VÀ AI ---
+        const videoElement = document.getElementsByClassName('input_video')[0];
+        const canvasElement = document.getElementsByClassName('output_canvas')[0];
+        const canvasCtx = canvasElement.getContext('2d');
+
+        function onResults(results) {
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+            
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const lm = results.multiHandLandmarks[0];
+
+                const isIndexOpen = lm[8].y < lm[6].y;
+                const isMiddleOpen = lm[12].y < lm[10].y;
+                const isRingOpen = lm[16].y < lm[14].y;
+                const isPinkyOpen = lm[20].y < lm[18].y;
+
+                const now = Date.now();
+                let actionName = "Đang xem...";
+
+                // ✌️ Đổi Tab
+                if (isIndexOpen && isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                    actionName = "✌️ Đổi Tab";
+                    if (now - lastActionTime > 1500) { switchTab(); lastActionTime = now; }
+                } 
+                // ✋ Cuộn xuống
+                else if (isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen) {
+                    actionName = "✋ Cuộn xuống / Phát YT";
+                    if (now - lastActionTime > 1000) {
+                        if (currentTab === 0) ytCommand('playVideo');
+                        else contentDiv.scrollBy({ top: 250, behavior: 'smooth' });
+                        lastActionTime = now;
+                    }
+                }
+                // ☝️ Cuộn lên
+                else if (isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                    actionName = "☝️ Cuộn lên";
+                    if (now - lastActionTime > 1000) {
+                        if (currentTab !== 0) contentDiv.scrollBy({ top: -250, behavior: 'smooth' });
+                        lastActionTime = now;
+                    }
+                }
+                // 🤘 Phóng to
+                else if (isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
+                    actionName = "🤘 Phóng to";
+                    if (now - lastActionTime > 600) {
+                        currentZoom = Math.min(currentZoom + 0.2, 2.5);
+                        applyZoom(); lastActionTime = now;
+                    }
+                }
+                // 🤙 Thu nhỏ
+                else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
+                    actionName = "🤙 Thu nhỏ";
+                    if (now - lastActionTime > 600) {
+                        currentZoom = Math.max(currentZoom - 0.2, 0.5);
+                        applyZoom(); lastActionTime = now;
+                    }
+                }
+                // ✊ Nắm tay
+                else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
+                    actionName = "✊ Tạm dừng";
+                    if (now - lastActionTime > 1000 && currentTab === 0) {
+                        ytCommand('pauseVideo'); lastActionTime = now;
+                    }
+                }
+
+                    statusBar.innerText = actionName;
+            } else {
+                statusBar.innerText = "Không thấy bàn tay ❌";
+            }
+        }
+
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+        hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+        hands.onResults(onResults);
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => { await hands.send({ image: videoElement }); },
+            width: 160, height: 120
+        });
+        camera.start();
+    </script>
+</body>
+</html>
