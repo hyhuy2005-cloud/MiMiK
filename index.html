@@ -3,30 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Tướng Pháp & Chiêm Tinh Chỉ Tay</title>
-    
-    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
-
+    <title>AI Chiêm Tinh & Tướng Pháp Thực Tế</title>
     <style>
         :root {
-            --bg-base: #060913;
+            --bg-base: #070a13;
             --card-bg: rgba(15, 23, 42, 0.9);
             --primary: #f59e0b;
-            --primary-glow: rgba(245, 158, 11, 0.35);
             --cyan: #06b6d4;
-            --cyan-glow: rgba(6, 182, 212, 0.4);
+            --cyan-glow: rgba(6, 182, 212, 0.35);
             --purple: #a855f7;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
             --border: #334155;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
 
         body {
             background-color: var(--bg-base);
@@ -36,574 +27,349 @@
             justify-content: center;
             align-items: center;
             padding: 2rem 1rem;
-            position: relative;
-        }
-
-        #starfield {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
         }
 
         .container {
-            max-width: 950px;
+            max-width: 900px;
             width: 100%;
             background: var(--card-bg);
             border: 1px solid rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
             border-radius: 24px;
-            padding: 2.2rem;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 40px var(--cyan-glow);
-            z-index: 1;
-            position: relative;
+            padding: 2rem;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 30px var(--cyan-glow);
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 1.8rem;
-        }
-
+        header { text-align: center; margin-bottom: 1.5rem; }
         header h1 {
             font-size: 2.2rem;
             background: linear-gradient(135deg, #fef08a, var(--primary), var(--cyan));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 800;
-            letter-spacing: 1px;
             text-transform: uppercase;
         }
 
-        header p {
-            color: var(--text-sub);
-            margin-top: 0.4rem;
-            font-size: 0.95rem;
+        /* API Key Section */
+        .api-key-section {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px dashed var(--cyan);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
         }
 
-        /* Nav Tabs */
-        .tab-nav {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 1rem;
+        .api-key-section label { display: block; font-size: 0.85rem; color: var(--cyan); margin-bottom: 0.4rem; font-weight: 600; }
+        .api-key-section input {
+            width: 100%;
+            padding: 0.6rem;
+            background: #090d16;
+            border: 1px solid var(--border);
+            color: #fff;
+            border-radius: 6px;
+            font-size: 0.9rem;
         }
+        .api-hint { font-size: 0.75rem; color: var(--text-sub); margin-top: 0.4rem; }
+        .api-hint a { color: var(--primary); text-decoration: none; }
 
+        /* Tabs */
+        .tab-nav { display: flex; justify-content: center; gap: 1rem; margin-bottom: 1.5rem; }
         .tab-btn {
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-sub);
-            padding: 0.65rem 1.4rem;
+            padding: 0.6rem 1.3rem;
             border-radius: 30px;
             font-weight: 600;
-            font-size: 0.95rem;
             cursor: pointer;
             transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
-
         .tab-btn.active {
             background: linear-gradient(135deg, var(--cyan), #2563eb);
-            border-color: transparent;
             color: #fff;
+            border-color: transparent;
             box-shadow: 0 0 15px var(--cyan-glow);
         }
 
-        .tab-content {
-            display: none;
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s ease; }
 
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.4s ease-in-out;
-        }
-
-        /* Layout Grid */
-        .grid-layout {
-            display: grid;
-            grid-template-columns: 1fr 1.1fr;
-            gap: 2rem;
-            align-items: start;
-        }
-
-        @media (max-width: 800px) {
-            .grid-layout { grid-template-columns: 1fr; }
-        }
-
-        /* Video / Face Visual Area */
-        .camera-panel {
-            background: rgba(10, 15, 30, 0.7);
+        /* Camera Box */
+        .camera-card {
+            background: rgba(10, 15, 30, 0.8);
             border: 1px solid var(--border);
             border-radius: 16px;
             padding: 1.2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-        }
-
-        .media-container {
-            width: 100%;
-            height: 300px;
-            position: relative;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid #1e293b;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #webcam, #image-preview {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        #face-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-        }
-
-        .cam-controls {
-            display: flex;
-            gap: 0.5rem;
-            width: 100%;
-            margin-top: 1rem;
-        }
-
-        .btn-action {
-            flex: 1;
-            padding: 0.6rem;
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid var(--border);
-            color: #cbd5e1;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
             text-align: center;
         }
 
-        .btn-action:hover {
-            border-color: var(--cyan);
-            color: var(--cyan);
-        }
-
-        /* Form elements */
-        .form-group {
-            margin-bottom: 1.1rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.4rem;
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: #e2e8f0;
-        }
-
-        select, input[type="text"] {
+        .video-wrapper {
             width: 100%;
-            padding: 0.75rem 0.9rem;
-            border-radius: 8px;
-            background-color: #0b1120;
+            max-width: 400px;
+            height: 300px;
+            margin: 0 auto 1rem auto;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
             border: 1px solid var(--border);
-            color: #f8fafc;
-            font-size: 0.9rem;
-            outline: none;
-            transition: border 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        select:focus, input[type="text"]:focus {
-            border-color: var(--cyan);
-            box-shadow: 0 0 10px var(--cyan-glow);
-        }
-
-        .btn-submit {
+        video, img.preview-img {
             width: 100%;
-            padding: 0.85rem;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .cam-btn-group { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+        .btn {
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #1e293b;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .btn:hover { border-color: var(--cyan); color: var(--cyan); }
+        .btn-primary {
             background: linear-gradient(135deg, var(--cyan), #0284c7);
             border: none;
-            border-radius: 10px;
-            color: #fff;
-            font-weight: 700;
+            width: 100%;
+            padding: 0.8rem;
             font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-top: 0.8rem;
+            margin-top: 1rem;
         }
 
-        .btn-submit:hover {
-            box-shadow: 0 0 20px var(--cyan-glow);
-            transform: translateY(-1px);
-        }
-
-        /* Result Section */
+        /* Result Area */
         #result-box {
             display: none;
             margin-top: 2rem;
             background: rgba(10, 15, 30, 0.95);
             border: 1px solid var(--cyan);
-            border-radius: 18px;
-            padding: 1.8rem;
-            animation: fadeIn 0.5s ease-in-out;
+            border-radius: 16px;
+            padding: 1.5rem;
+            line-height: 1.7;
         }
-
-        .reading-card {
-            background: rgba(30, 41, 59, 0.4);
-            border-left: 4px solid var(--cyan);
-            padding: 1rem 1.2rem;
-            border-radius: 4px 10px 10px 4px;
-            margin-bottom: 1rem;
-        }
-
-        .reading-title {
-            font-weight: 700;
-            font-size: 0.95rem;
+        #result-box h2 { color: var(--primary); margin-bottom: 1rem; font-size: 1.3rem; }
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
             color: var(--cyan);
-            margin-bottom: 0.3rem;
+            font-weight: 600;
         }
 
-        .reading-desc {
-            color: #cbd5e1;
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        .status-badge {
-            font-size: 0.8rem;
-            padding: 0.3rem 0.6rem;
-            border-radius: 6px;
-            background: rgba(6, 182, 212, 0.15);
-            color: var(--cyan);
-            margin-top: 0.5rem;
-            display: inline-block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <canvas id="starfield"></canvas>
-
     <div class="container">
         <header>
-            <h1>✦ CHIÊM TINH & TƯỚNG PHÁP AI ✦</h1>
-            <p>Hệ thống phân tích diện mạo khuôn mặt và bản đồ chỉ tay đa năng</p>
+            <h1>✦ AI LUẬN GIẢI TƯỚNG PHÁP ✦</h1>
+            <p>Sử dụng AI Vision phân tích thực tế từ ảnh chụp bàn tay & khuôn mặt</p>
         </header>
 
+        <div class="api-key-section">
+            <label for="api-key">🔑 Nhập Google Gemini API Key để kích hoạt AI thực:</label>
+            <input type="password" id="api-key" placeholder="AIzaSy...">
+            <div class="api-hint">
+                * Chưa có API Key? Lấy miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> (Hoàn toàn miễn phí).
+            </div>
+        </div>
+
         <div class="tab-nav">
-            <button class="tab-btn active" onclick="switchTab('face')">👤 Xem Tướng Khuôn Mặt AI</button>
-            <button class="tab-btn" onclick="switchTab('palm')">✋ Bói Chỉ Tay Vận Mệnh</button>
+            <button class="tab-btn active" onclick="switchTab('palm')">✋ Bói Chỉ Tay (Camera)</button>
+            <button class="tab-btn" onclick="switchTab('face')">👤 Xem Tướng Mặt (Camera)</button>
         </div>
 
-        <div id="tab-face" class="tab-content active">
-            <div class="grid-layout">
-                <div class="camera-panel">
-                    <div class="media-container" id="media-wrap">
-                        <video id="webcam" autoplay muted playsinline></video>
-                        <img id="image-preview" alt="Face Preview" style="display:none;">
-                        <canvas id="face-canvas"></canvas>
-                    </div>
-                    <div class="status-badge" id="ai-status">⚡ Đang tải AI Model nhận diện...</div>
-                    <div class="cam-controls">
-                        <button class="btn-action" onclick="startWebcam()">📹 Mở Webcam</button>
-                        <label class="btn-action" for="face-upload" style="margin:0; line-height:2.2;">📁 Tải Ảnh</label>
-                        <input type="file" id="face-upload" accept="image/*" style="display:none;">
-                    </div>
+        <div id="tab-palm" class="tab-content active">
+            <div class="camera-card">
+                <div class="video-wrapper">
+                    <video id="palm-video" autoplay playsinline></video>
+                    <img id="palm-preview" class="preview-img" style="display:none;">
                 </div>
-
-                <div>
-                    <div class="form-group">
-                        <label>Họ và Tên:</label>
-                        <input type="text" id="face-user-name" placeholder="Nhập tên của bạn...">
-                    </div>
-                    <div class="form-group">
-                        <label>Định hướng phân tích sâu:</label>
-                        <select id="face-focus">
-                            <option value="all">Tổng quan Tam Đình (Tiền, Trung, Hậu vận)</option>
-                            <option value="career">Quan Lộc & Công Danh (Cung Trán & Mày)</option>
-                            <option value="wealth">Tài Lộc & Phú Quý (Cung Chuẩn Đầu - Mũi)</option>
-                            <option value="emotion">Nhân Duyên & Tính Tình (Tướng Mắt & Miệng)</option>
-                        </select>
-                    </div>
-                    <button class="btn-submit" onclick="analyzeFaceTraits()">🔮 Quét & Phân Tích Tướng Mạo</button>
+                <div class="cam-btn-group">
+                    <button class="btn" onclick="startCamera('palm')">📹 Bật Camera Chỉ Tay</button>
+                    <button class="btn" onclick="capturePhoto('palm')">📸 Chụp Bàn Tay</button>
+                    <label class="btn" for="palm-upload">📁 Tải Ảnh Lên</label>
+                    <input type="file" id="palm-upload" accept="image/*" style="display:none;" onchange="handleFileUpload(event, 'palm')">
                 </div>
+                <button class="btn btn-primary" onclick="analyzeWithAI('palm')">🔮 Gửi AI Phân Tích Chỉ Tay</button>
             </div>
         </div>
 
-        <div id="tab-palm" class="tab-content">
-            <div class="grid-layout">
-                <div class="camera-panel">
-                    <div class="media-container">
-                        <svg class="hand-svg" viewBox="0 0 200 240" style="width:75%; height:75%;" fill="none" stroke="#38bdf8" stroke-width="2">
-                            <path d="M50 110 C45 80 40 40 52 35 C64 30 68 60 70 85 C73 50 78 20 90 20 C102 20 104 55 105 85 C108 50 115 25 127 28 C138 31 136 65 135 95 C138 75 145 60 155 65 C165 70 160 105 155 125 C150 150 155 195 135 215 C115 235 75 235 55 215 C40 200 45 155 30 140 C15 125 25 110 38 115 C48 120 50 130 50 110 Z" fill="rgba(6,182,212,0.05)"/>
-                            <path d="M145 105 C115 105 90 90 70 85" stroke="#ec4899" stroke-width="2.5"/>
-                            <path d="M45 128 C80 125 115 130 140 145" stroke="#06b6d4" stroke-width="2.5"/>
-                            <path d="M45 128 C65 145 75 180 65 210" stroke="#10b981" stroke-width="2.5"/>
-                        </svg>
-                    </div>
+        <div id="tab-face" class="tab-content">
+            <div class="camera-card">
+                <div class="video-wrapper">
+                    <video id="face-video" autoplay playsinline></video>
+                    <img id="face-preview" class="preview-img" style="display:none;">
                 </div>
-
-                <div>
-                    <div class="form-group">
-                        <label>Đường Tâm Đạo (Tình Duyên):</label>
-                        <select id="p-heart">
-                            <option value="long">Dài, cong nhẹ lên ngón trỏ (Chung thủy, tình cảm)</option>
-                            <option value="short">Thẳng và ngắn (Thực tế, quyết đoán)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Đường Trí Đạo (Sự Nghiệp):</label>
-                        <select id="p-head">
-                            <option value="long">Sâu và kéo dài (Tư duy logic, quản trị tốt)</option>
-                            <option value="forked">Phân nhánh đuôi cá (Đa tài, nhạy bén kinh doanh)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Đường Sinh Đạo (Sức Sống):</label>
-                        <select id="p-life">
-                            <option value="wide">Vòng cung rộng (Sinh lực bền bỉ, ý chí cao)</option>
-                            <option value="double">Có đường song song (Quý nhân trợ lực)</option>
-                        </select>
-                    </div>
-                    <button class="btn-submit" onclick="analyzePalm()">✋ Luận Đoán Bàn Tay</button>
+                <div class="cam-btn-group">
+                    <button class="btn" onclick="startCamera('face')">📹 Bật Camera Mặt</button>
+                    <button class="btn" onclick="capturePhoto('face')">📸 Chụp Khuôn Mặt</button>
+                    <label class="btn" for="face-upload">📁 Tải Ảnh Lên</label>
+                    <input type="file" id="face-upload" accept="image/*" style="display:none;" onchange="handleFileUpload(event, 'face')">
                 </div>
+                <button class="btn btn-primary" onclick="analyzeWithAI('face')">🔮 Gửi AI Phân Tích Tướng Mặt</button>
             </div>
         </div>
 
+        <div class="loading-spinner" id="loading">⚡ AI đang quan sát hình ảnh và luận giải vận mệnh... Xin chờ giây lát...</div>
+        
         <div id="result-box">
-            <h3 id="res-heading" style="color: var(--cyan); margin-bottom: 1rem; text-align: center;">✦ BẢN LUẬN GIẢI CHI TIẾT ✦</h3>
-            <div id="res-items"></div>
+            <h2 id="res-title">KẾT QUẢ PHÂN TÍCH TỪ AI VISION</h2>
+            <div id="res-content"></div>
         </div>
     </div>
 
+    <canvas id="snapshot-canvas" style="display:none;"></canvas>
+
     <script>
-        /* --- 1. STARFIELD BACKGROUND --- */
-        const canvas = document.getElementById('starfield');
-        const ctx = canvas.getContext('2d');
-        let stars = [];
+        let currentStreams = { palm: null, face: null };
+        let capturedBase64 = { palm: null, face: null };
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            stars = Array.from({length: 120}, () => ({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                r: Math.random() * 1.5 + 0.3,
-                a: Math.random(),
-                speed: Math.random() * 0.02 + 0.005
-            }));
-        }
-        function animateStars() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            stars.forEach(s => {
-                ctx.beginPath();
-                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255,255,255,${s.a})`;
-                ctx.fill();
-                s.a += s.speed;
-                if (s.a > 1 || s.a < 0.1) s.speed = -s.speed;
-            });
-            requestAnimationFrame(animateStars);
-        }
-        window.addEventListener('resize', resize);
-        resize(); animateStars();
-
-        /* --- 2. TAB SWITCHING --- */
-        function switchTab(type) {
+        function switchTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`tab-${type}`).classList.add('active');
+            
             event.currentTarget.classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
             document.getElementById('result-box').style.display = 'none';
         }
 
-        /* --- 3. FACE-API INTEGRATION & LANDMARKS --- */
-        const video = document.getElementById('webcam');
-        const imgPreview = document.getElementById('image-preview');
-        const faceCanvas = document.getElementById('face-canvas');
-        const statusEl = document.getElementById('ai-status');
-        let isModelLoaded = false;
-        let detectedLandmarks = null;
-
-        async function loadModels() {
-            try {
-                // Tải model trực tiếp từ CDN Vladmandic
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                isModelLoaded = true;
-                statusEl.innerText = "✨ AI Sẵn Sàng (Camera / Ảnh)";
-            } catch (err) {
-                statusEl.innerText = "⚡ Sử dụng chế độ phân tích ảnh mô phỏng";
-            }
-        }
-        window.addEventListener('DOMContentLoaded', loadModels);
-
-        async function startWebcam() {
-            imgPreview.style.display = 'none';
+        // 1. WEBCAM CONTROLLER
+        async function startCamera(type) {
+            const video = document.getElementById(`${type}-video`);
+            const preview = document.getElementById(`${type}-preview`);
+            
+            preview.style.display = 'none';
             video.style.display = 'block';
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                if (currentStreams[type]) {
+                    currentStreams[type].getTracks().forEach(t => t.stop());
+                }
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
                 video.srcObject = stream;
-                statusEl.innerText = "📷 Đang truyền phát hình ảnh trực tiếp...";
-                trackFace();
-            } catch (e) {
-                alert("Không thể mở Webcam hoặc quyền truy cập bị từ chối.");
+                currentStreams[type] = stream;
+            } catch (err) {
+                alert("Không thể mở camera. Vui lòng cấp quyền hoặc sử dụng tính năng tải ảnh.");
             }
         }
 
-        document.getElementById('face-upload').addEventListener('change', function(e) {
+        function capturePhoto(type) {
+            const video = document.getElementById(`${type}-video`);
+            const preview = document.getElementById(`${type}-preview`);
+            const canvas = document.getElementById('snapshot-canvas');
+
+            if (!video.srcObject) {
+                alert("Hãy bấm 'Bật Camera' trước khi chụp!");
+                return;
+            }
+
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            capturedBase64[type] = dataUrl.split(',')[1];
+
+            preview.src = dataUrl;
+            preview.style.display = 'block';
+            video.style.display = 'none';
+
+            // Stop track
+            if (currentStreams[type]) {
+                currentStreams[type].getTracks().forEach(t => t.stop());
+            }
+        }
+
+        function handleFileUpload(e, type) {
             const file = e.target.files[0];
             if (!file) return;
-            const r = new FileReader();
-            r.onload = async function(evt) {
-                if (video.srcObject) {
-                    video.srcObject.getTracks().forEach(t => t.stop());
-                }
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const dataUrl = evt.target.result;
+                capturedBase64[type] = dataUrl.split(',')[1];
+
+                const video = document.getElementById(`${type}-video`);
+                const preview = document.getElementById(`${type}-preview`);
+                
+                preview.src = dataUrl;
+                preview.style.display = 'block';
                 video.style.display = 'none';
-                imgPreview.src = evt.target.result;
-                imgPreview.style.display = 'block';
-                statusEl.innerText = "🔍 Đang quét nhận diện diện mạo...";
-                
-                imgPreview.onload = async () => {
-                    detectStaticImage();
-                };
             };
-            r.readAsDataURL(file);
-        });
+            reader.readAsDataURL(file);
+        }
 
-        async function detectStaticImage() {
-            if (!isModelLoaded) return;
-            const detection = await faceapi.detectSingleFace(imgPreview, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
-            const displaySize = { width: imgPreview.clientWidth, height: imgPreview.clientHeight };
-            faceapi.matchDimensions(faceCanvas, displaySize);
-            
-            const ctxFace = faceCanvas.getContext('2d');
-            ctxFace.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+        // 2. GEMINI VISION AI CALLER
+        async function analyzeWithAI(type) {
+            const apiKey = document.getElementById('api-key').value.trim();
+            const loading = document.getElementById('loading');
+            const resultBox = document.getElementById('result-box');
+            const resContent = document.getElementById('res-content');
 
-            if (detection) {
-                const resized = faceapi.resizeResults(detection, displaySize);
-                detectedLandmarks = resized.landmarks;
-                
-                // Vẽ lưới điểm huỳnh quang phong cách Cyber/Mystic
-                faceapi.draw.drawFaceLandmarks(faceCanvas, resized);
-                statusEl.innerText = "✅ Đã định vị 68 mốc tướng pháp";
+            if (!apiKey) {
+                alert("Vui lòng nhập Google Gemini API Key để thực hiện phân tích thật!");
+                return;
+            }
+
+            const base64Data = capturedBase64[type];
+            if (!base64Data) {
+                alert("Vui lòng chụp ảnh từ Camera hoặc tải ảnh lên trước!");
+                return;
+            }
+
+            loading.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            let prompt = "";
+            if (type === 'palm') {
+                prompt = "Hãy đóng vai một Bậc Thầy Bói Chỉ Tay chuyên nghiệp. Hãy quan sát thật kỹ các đường chỉ tay (Tâm đạo, Trí đạo, Sinh đạo, Định mệnh) và các gò bàn tay trong bức ảnh này. Cho lời luận giải chi tiết, riêng biệt về: 1. Tình duyên & Cảm xúc, 2. Trí tuệ & Sự nghiệp, 3. Sức khỏe & Năng lượng sống. Trả lời dạng HTML ngắn gọn, trình bày đẹp mắt.";
             } else {
-                statusEl.innerText = "⚠️ Không phát hiện rõ khuôn mặt, hãy thử góc chụp thẳng";
+                prompt = "Hãy đóng vai một Bậc Thầy Nhân Tướng Học. Hãy quan sát kỹ khuôn mặt trong ảnh (Thượng/Trung/Hạ đình, Mắt, Mũi, Miệng, Thần khí). Đưa ra luận giải chi tiết về: 1. Tổng quan tính cách & Thần khí, 2. Công danh & Tài lộc (Cung Trán, Mũi), 3. Tình duyên & Hậu vận. Trả lời dạng HTML ngắn gọn, trình bày đẹp mắt.";
             }
-        }
 
-        async function trackFace() {
-            if (video.paused || video.ended || !isModelLoaded) return;
-            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
-            const displaySize = { width: video.clientWidth, height: video.clientHeight };
-            faceapi.matchDimensions(faceCanvas, displaySize);
-            
-            const ctxFace = faceCanvas.getContext('2d');
-            ctxFace.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: prompt },
+                                { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                            ]
+                        }]
+                    })
+                });
 
-            if (detection) {
-                const resized = faceapi.resizeResults(detection, displaySize);
-                detectedLandmarks = resized.landmarks;
-                faceapi.draw.drawFaceLandmarks(faceCanvas, resized);
+                const data = await response.json();
+                loading.style.display = 'none';
+
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    let text = data.candidates[0].content.parts[0].text;
+                    // Chuyển đổi định dạng văn bản thô thành HTML đẹp mắt
+                    text = text.replace(/```html/g, '').replace(/```/g, '').replace(/\n/g, '<br>');
+                    resContent.innerHTML = text;
+                    resultBox.style.display = 'block';
+                    resultBox.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert("Không thể phân tích ảnh. Lỗi: " + JSON.stringify(data));
+                }
+            } catch (err) {
+                loading.style.display = 'none';
+                alert("Có lỗi kết nối tới API. Vui lòng kiểm tra lại API Key!");
             }
-            requestAnimationFrame(trackFace);
-        }
-
-        /* --- 4. NHÂN TƯỚNG HỌC KNOWLEDGE ENGINE --- */
-        function analyzeFaceTraits() {
-            const name = document.getElementById('face-user-name').value.trim() || "Thí chủ";
-            const focus = document.getElementById('face-focus').value;
-            const resultBox = document.getElementById('result-box');
-            const resItems = document.getElementById('res-items');
-
-            let readings = [];
-
-            // Nếu nhận diện được landmarks thật thì đo đạc cơ bản, nếu không sẽ giải nghĩa chuyên sâu theo thuật tướng số
-            readings.push({
-                title: "🏛️ Tam Đình Tướng Pháp (Thời Vận Cuộc Đời)",
-                desc: "Thượng đình (Trán) cao rộng biểu thị tiền vận thông tuệ, tiếp thu nhanh. Trung đình (Mũi) cân đối dự báo trung vận sự nghiệp khởi sắc và có độ vững chắc. Hạ đình (Cằm) đầy đặn bảo đảm hậu vận an nhàn."
-            });
-
-            readings.push({
-                title: "👁️ Tướng Mắt & Thần Khí (Tâm Tính & Quyết Đoán)",
-                desc: "Đuôi mắt hướng nhẹ lên, ánh nhìn có định lực: Người sở hữu ý chí cao, có tầm nhìn chiến lược và hiếm khi bỏ cuộc trước áp lực."
-            });
-
-            readings.push({
-                title: "💎 Cung Tài Bạch - Mũi (Tiền Tài & Kinh Doanh)",
-                desc: "Sống mũi thẳng, cánh mũi dày dặn: Tượng trưng cho khả năng tích lũy tài chính, quản lý ngân sách và có trực giác nhạy bén với cơ hội mới."
-            });
-
-            resItems.innerHTML = readings.map(r => `
-                <div class="reading-card">
-                    <div class="reading-title">${r.title}</div>
-                    <div class="reading-desc">${r.desc}</div>
-                </div>
-            `).join('');
-
-            resultBox.style.display = 'block';
-            resultBox.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function analyzePalm() {
-            const heart = document.getElementById('p-heart').value;
-            const head = document.getElementById('p-head').value;
-            const life = document.getElementById('p-life').value;
-            const resultBox = document.getElementById('result-box');
-            const resItems = document.getElementById('res-items');
-
-            const hTxt = heart === 'long' 
-                ? "Tâm đạo sâu dài: Giàu lòng trắc ẩn, chân thành trong tình cảm và luôn tạo sự tin cậy cao."
-                : "Tâm đạo thẳng: Lý trí vững vàng, độc lập và xử lý các mối quan hệ theo hướng thiết thực.";
-            
-            const hdTxt = head === 'long'
-                ? "Trí đạo rõ nét: Năng lực tư duy logic sắc sảo, thích hợp phân tích chiến lược và định hướng dài hạn."
-                : "Trí đạo đuôi cá: Khả năng thích ứng môi trường cực nhanh, nhạy cảm với thời cuộc và cơ hội làm ăn.";
-
-            const lTxt = life === 'wide'
-                ? "Sinh đạo hình cung rộng: Năng lượng thể chất dồi dào, khả năng phục hồi nhanh trước mệt mỏi."
-                : "Sinh đạo song trùng: Có quý nhân âm thầm giúp đỡ khi bước vào những giai đoạn bước ngoặt.";
-
-            resItems.innerHTML = `
-                <div class="reading-card">
-                    <div class="reading-title">💖 Đường Tâm Đạo (Tình Duyên & Nội Tâm)</div>
-                    <div class="reading-desc">${hTxt}</div>
-                </div>
-                <div class="reading-card">
-                    <div class="reading-title">💡 Đường Trí Đạo (Học Vấn & Sự Nghiệp)</div>
-                    <div class="reading-desc">${hdTxt}</div>
-                </div>
-                <div class="reading-card">
-                    <div class="reading-title">🌿 Đường Sinh Đạo (Năng Lượng Sống)</div>
-                    <div class="reading-desc">${lTxt}</div>
-                </div>
-            `;
-
-            resultBox.style.display = 'block';
-            resultBox.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 </body>
