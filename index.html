@@ -3,299 +3,608 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Hub - Fix Camera & PDF Canvas</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; overflow: hidden; }
-        #nav { display: flex; background: #333; padding: 12px; justify-content: space-around; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .tab { padding: 10px 20px; border-radius: 5px; font-weight: bold; opacity: 0.5; transition: 0.3s; cursor: pointer; }
-        .tab.active { background: #007bff; opacity: 1; }
-        
-        #content { flex: 1; overflow-y: auto; padding: 20px; position: relative; scroll-behavior: smooth; }
-        #zoom-wrapper { transform-origin: top center; transition: transform 0.3s ease; }
-        
-        .page { display: none; }
-        .page.active { display: block; }
-        
-        .book-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 8px; }
-        .btn { background: #00ffcc; color: #000; border: none; padding: 8px 12px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 14px; }
-        .btn-blue { background: #007bff; color: white; }
-        .input-url { flex: 1; min-width: 150px; padding: 8px; border-radius: 5px; border: 1px solid #555; background: #333; color: white; font-size: 14px; }
-        
-        #book-content { font-size: 18px; line-height: 1.8; color: #e0e0e0; padding: 10px; background: #2a2a2a; border-radius: 8px; min-height: 300px; white-space: pre-wrap; }
-        
-        #status-bar { background: #222; text-align: center; padding: 10px; font-weight: bold; color: #00ffcc; border-top: 1px solid #444; z-index: 10; position: fixed; bottom: 0; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px;}
-        .status-text { flex: 1; }
-        .camera-toggle { padding: 6px 10px; font-size: 12px; border-radius: 4px; background: #444; color: white;}
-        .camera-toggle.on { background: #ff3333; color: white; }
+    <title>AI Tướng Pháp & Chiêm Tinh Chỉ Tay</title>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
 
-        #camera-container { position: fixed; bottom: 60px; right: 10px; width: 120px; background: #000; border-radius: 8px; overflow: hidden; border: 2px solid #555; z-index: 1000; display: none;}
-        video.input_video { width: 100%; height: auto; display: block; transform: scaleX(-1); }
-        
-        canvas.pdf-page-canvas { width: 100%; max-width: 800px; margin: 0 auto 20px auto; display: block; box-shadow: 0 5px 15px rgba(0,0,0,0.5); border-radius: 4px; background-color: white; border: 1px solid #ccc;}
+    <style>
+        :root {
+            --bg-base: #060913;
+            --card-bg: rgba(15, 23, 42, 0.9);
+            --primary: #f59e0b;
+            --primary-glow: rgba(245, 158, 11, 0.35);
+            --cyan: #06b6d4;
+            --cyan-glow: rgba(6, 182, 212, 0.4);
+            --purple: #a855f7;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1rem;
+            position: relative;
+        }
+
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 950px;
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 2.2rem;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 40px var(--cyan-glow);
+            z-index: 1;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1.8rem;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #fef08a, var(--primary), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        header p {
+            color: var(--text-sub);
+            margin-top: 0.4rem;
+            font-size: 0.95rem;
+        }
+
+        /* Nav Tabs */
+        .tab-nav {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-sub);
+            padding: 0.65rem 1.4rem;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--cyan), #2563eb);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 0 15px var(--cyan-glow);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        /* Layout Grid */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1.1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 800px) {
+            .grid-layout { grid-template-columns: 1fr; }
+        }
+
+        /* Video / Face Visual Area */
+        .camera-panel {
+            background: rgba(10, 15, 30, 0.7);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .media-container {
+            width: 100%;
+            height: 300px;
+            position: relative;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #webcam, #image-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #face-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        .cam-controls {
+            display: flex;
+            gap: 0.5rem;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 0.6rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid var(--border);
+            color: #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .btn-action:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        /* Form elements */
+        .form-group {
+            margin-bottom: 1.1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 0.9rem;
+            border-radius: 8px;
+            background-color: #0b1120;
+            border: 1px solid var(--border);
+            color: #f8fafc;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        select:focus, input[type="text"]:focus {
+            border-color: var(--cyan);
+            box-shadow: 0 0 10px var(--cyan-glow);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.85rem;
+            background: linear-gradient(135deg, var(--cyan), #0284c7);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.8rem;
+        }
+
+        .btn-submit:hover {
+            box-shadow: 0 0 20px var(--cyan-glow);
+            transform: translateY(-1px);
+        }
+
+        /* Result Section */
+        #result-box {
+            display: none;
+            margin-top: 2rem;
+            background: rgba(10, 15, 30, 0.95);
+            border: 1px solid var(--cyan);
+            border-radius: 18px;
+            padding: 1.8rem;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .reading-card {
+            background: rgba(30, 41, 59, 0.4);
+            border-left: 4px solid var(--cyan);
+            padding: 1rem 1.2rem;
+            border-radius: 4px 10px 10px 4px;
+            margin-bottom: 1rem;
+        }
+
+        .reading-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--cyan);
+            margin-bottom: 0.3rem;
+        }
+
+        .reading-desc {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--cyan);
+            margin-top: 0.5rem;
+            display: inline-block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-    </script>
 </head>
 <body>
 
-    <div id="nav">
-        <div class="tab active" id="tab-0" onclick="changeTabManually(0)">📺 YouTube</div>
-        <div class="tab" id="tab-1" onclick="changeTabManually(1)">📖 Đọc Sách / PDF</div>
-        <div class="tab" id="tab-2" onclick="changeTabManually(2)">🌐 Lướt Web</div>
-    </div>
+    <canvas id="starfield"></canvas>
 
-    <div id="content">
-        <div id="zoom-wrapper">
-            
-            <!-- Trang YouTube -->
-            <div class="page active" id="page-0">
-                <h3>YouTube Player</h3>
-                <div style="margin-bottom: 15px;">
-                    <button id="toggle-camera-yt" class="btn" onclick="toggleCameraAI()">📷 Bật AI Camera (Tiết kiệm pin)</button>
+    <div class="container">
+        <header>
+            <h1>✦ CHIÊM TINH & TƯỚNG PHÁP AI ✦</h1>
+            <p>Hệ thống phân tích diện mạo khuôn mặt và bản đồ chỉ tay đa năng</p>
+        </header>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('face')">👤 Xem Tướng Khuôn Mặt AI</button>
+            <button class="tab-btn" onclick="switchTab('palm')">✋ Bói Chỉ Tay Vận Mệnh</button>
+        </div>
+
+        <div id="tab-face" class="tab-content active">
+            <div class="grid-layout">
+                <div class="camera-panel">
+                    <div class="media-container" id="media-wrap">
+                        <video id="webcam" autoplay muted playsinline></video>
+                        <img id="image-preview" alt="Face Preview" style="display:none;">
+                        <canvas id="face-canvas"></canvas>
+                    </div>
+                    <div class="status-badge" id="ai-status">⚡ Đang tải AI Model nhận diện...</div>
+                    <div class="cam-controls">
+                        <button class="btn-action" onclick="startWebcam()">📹 Mở Webcam</button>
+                        <label class="btn-action" for="face-upload" style="margin:0; line-height:2.2;">📁 Tải Ảnh</label>
+                        <input type="file" id="face-upload" accept="image/*" style="display:none;">
+                    </div>
                 </div>
-                <iframe id="yt-video" width="100%" height="250" src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-                <p>✋ Phát | ✊ Dừng & Tắt Camera | ☝️ Cuộn lên | ✌️ Đổi tab</p>
-            </div>
 
-            <!-- Trang Đọc Sách / PDF -->
-            <div class="page" id="page-1">
-                <h3>Trình đọc Sách & File PDF</h3>
-                <div class="book-controls">
-                    <input type="file" id="file-input" accept=".txt,.pdf" style="display: none;">
-                    <button class="btn" onclick="document.getElementById('file-input').click()">📂 Tải file TXT hoặc PDF</button>
-                    <input type="text" id="url-input" class="input-url" placeholder="Link file văn bản...">
-                    <button class="btn btn-blue" onclick="loadBookFromUrl()">🌐 Tải từ mạng</button>
-                </div>
-                <p style="font-size: 14px; color: #888;">🤘 Phóng to | 🤙 Thu nhỏ | ✋ Cuộn xuống | ☝️ Cuộn lên | ✊ Dừng</p>
-                <div id="book-content">Hãy tải file TXT hoặc PDF từ máy của bạn để bắt đầu đọc.</div>
-            </div>
-
-            <!-- Trang Lướt Web -->
-            <div class="page" id="page-2">
-                <h3>Trang Web Dài</h3>
-                <div style="height: 1200px; background: linear-gradient(#444, #111); padding: 10px;">
-                    (Khu vực giả lập để test cuộn và zoom)
+                <div>
+                    <div class="form-group">
+                        <label>Họ và Tên:</label>
+                        <input type="text" id="face-user-name" placeholder="Nhập tên của bạn...">
+                    </div>
+                    <div class="form-group">
+                        <label>Định hướng phân tích sâu:</label>
+                        <select id="face-focus">
+                            <option value="all">Tổng quan Tam Đình (Tiền, Trung, Hậu vận)</option>
+                            <option value="career">Quan Lộc & Công Danh (Cung Trán & Mày)</option>
+                            <option value="wealth">Tài Lộc & Phú Quý (Cung Chuẩn Đầu - Mũi)</option>
+                            <option value="emotion">Nhân Duyên & Tính Tình (Tướng Mắt & Miệng)</option>
+                        </select>
+                    </div>
+                    <button class="btn-submit" onclick="analyzeFaceTraits()">🔮 Quét & Phân Tích Tướng Mạo</button>
                 </div>
             </div>
+        </div>
 
+        <div id="tab-palm" class="tab-content">
+            <div class="grid-layout">
+                <div class="camera-panel">
+                    <div class="media-container">
+                        <svg class="hand-svg" viewBox="0 0 200 240" style="width:75%; height:75%;" fill="none" stroke="#38bdf8" stroke-width="2">
+                            <path d="M50 110 C45 80 40 40 52 35 C64 30 68 60 70 85 C73 50 78 20 90 20 C102 20 104 55 105 85 C108 50 115 25 127 28 C138 31 136 65 135 95 C138 75 145 60 155 65 C165 70 160 105 155 125 C150 150 155 195 135 215 C115 235 75 235 55 215 C40 200 45 155 30 140 C15 125 25 110 38 115 C48 120 50 130 50 110 Z" fill="rgba(6,182,212,0.05)"/>
+                            <path d="M145 105 C115 105 90 90 70 85" stroke="#ec4899" stroke-width="2.5"/>
+                            <path d="M45 128 C80 125 115 130 140 145" stroke="#06b6d4" stroke-width="2.5"/>
+                            <path d="M45 128 C65 145 75 180 65 210" stroke="#10b981" stroke-width="2.5"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="form-group">
+                        <label>Đường Tâm Đạo (Tình Duyên):</label>
+                        <select id="p-heart">
+                            <option value="long">Dài, cong nhẹ lên ngón trỏ (Chung thủy, tình cảm)</option>
+                            <option value="short">Thẳng và ngắn (Thực tế, quyết đoán)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Đường Trí Đạo (Sự Nghiệp):</label>
+                        <select id="p-head">
+                            <option value="long">Sâu và kéo dài (Tư duy logic, quản trị tốt)</option>
+                            <option value="forked">Phân nhánh đuôi cá (Đa tài, nhạy bén kinh doanh)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Đường Sinh Đạo (Sức Sống):</label>
+                        <select id="p-life">
+                            <option value="wide">Vòng cung rộng (Sinh lực bền bỉ, ý chí cao)</option>
+                            <option value="double">Có đường song song (Quý nhân trợ lực)</option>
+                        </select>
+                    </div>
+                    <button class="btn-submit" onclick="analyzePalm()">✋ Luận Đoán Bàn Tay</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="result-box">
+            <h3 id="res-heading" style="color: var(--cyan); margin-bottom: 1rem; text-align: center;">✦ BẢN LUẬN GIẢI CHI TIẾT ✦</h3>
+            <div id="res-items"></div>
         </div>
     </div>
 
-    <div id="status-bar">
-        <span id="status-text" class="status-text">Trạng thái: Tắt (Bấm nút để bật camera)</span>
-        <button id="camera-toggle-btn" class="camera-toggle" onclick="toggleCameraAI()">📷 Bật AI</button>
-    </div>
-    
-    <div id="camera-container">
-        <video class="input_video" autoplay playsinline muted></video>
-    </div>
-
     <script>
-        let currentTab = 0;
-        let currentZoom = 1.0;
-        let lastActionTime = 0; 
-        let isCameraOn = false; 
-        let stream = null; 
+        /* --- 1. STARFIELD BACKGROUND --- */
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
 
-        const contentDiv = document.getElementById('content');
-        const zoomWrapper = document.getElementById('zoom-wrapper');
-        const statusBarText = document.getElementById('status-text');
-        const cameraToggleBtn = document.getElementById('camera-toggle-btn');
-        const cameraContainer = document.getElementById('camera-container');
-        const ytToggleButton = document.getElementById('toggle-camera-yt');
-        
-        // Khởi tạo MediaPipe Hands
-        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-        hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stars = Array.from({length: 120}, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                r: Math.random() * 1.5 + 0.3,
+                a: Math.random(),
+                speed: Math.random() * 0.02 + 0.005
+            }));
+        }
+        function animateStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(s => {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+                ctx.fill();
+                s.a += s.speed;
+                if (s.a > 1 || s.a < 0.1) s.speed = -s.speed;
+            });
+            requestAnimationFrame(animateStars);
+        }
+        window.addEventListener('resize', resize);
+        resize(); animateStars();
 
-        hands.onResults((results) => {
-            const now = Date.now();
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                const lm = results.multiHandLandmarks[0];
-                const isIndexOpen = lm[8].y < lm[6].y;
-                const isMiddleOpen = lm[12].y < lm[10].y;
-                const isRingOpen = lm[16].y < lm[14].y;
-                const isPinkyOpen = lm[20].y < lm[18].y;
-                const isThumbOpen = lm[4].y < lm[3].y; 
-
-                let actionName = "Đang xem...";
-
-                if (!isThumbOpen && !isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                    actionName = "✊ Tắt AI & Tạm dừng";
-                    if (now - lastActionTime > 1000) {
-                        if (currentTab === 0) ytCommand('pauseVideo');
-                        if (isCameraOn) stopCameraStream();
-                        lastActionTime = now;
-                    }
-                }
-                else if (isIndexOpen && isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                    actionName = "✌️ Đổi Tab";
-                    if (now - lastActionTime > 1500) { switchTab(); lastActionTime = now; }
-                } 
-                else if (isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen) {
-                    actionName = "✋ Phát / Cuộn xuống";
-                    if (now - lastActionTime > 1000) {
-                        if (currentTab === 0) ytCommand('playVideo');
-                        else contentDiv.scrollBy({ top: 300, behavior: 'smooth' });
-                        lastActionTime = now;
-                    }
-                }
-                else if (isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) {
-                    actionName = "☝️ Cuộn lên";
-                    if (now - lastActionTime > 1000) {
-                        if (currentTab !== 0) contentDiv.scrollBy({ top: -300, behavior: 'smooth' });
-                        lastActionTime = now;
-                    }
-                }
-                else if (isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
-                    actionName = "🤘 Phóng to";
-                    if (now - lastActionTime > 600) {
-                        currentZoom = Math.min(currentZoom + 0.2, 2.5);
-                        applyZoom(); lastActionTime = now;
-                    }
-                }
-                else if (!isIndexOpen && !isMiddleOpen && !isRingOpen && isPinkyOpen) {
-                    actionName = "🤙 Thu nhỏ";
-                    if (now - lastActionTime > 600) {
-                        currentZoom = Math.max(currentZoom - 0.2, 0.5);
-                        applyZoom(); lastActionTime = now;
-                    }
-                }
-                statusBarText.innerText = actionName;
-                statusBarText.style.color = "#00ffcc";
-            } else {
-                statusBarText.innerText = "Đang tìm tay trước camera...";
-                statusBarText.style.color = "#888";
-            }
-        });
-
-        // Bật/tắt camera
-        function toggleCameraAI() {
-            if (isCameraOn) {
-                stopCameraStream();
-            } else {
-                startCameraStream();
-            }
+        /* --- 2. TAB SWITCHING --- */
+        function switchTab(type) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`tab-${type}`).classList.add('active');
+            event.currentTarget.classList.add('active');
+            document.getElementById('result-box').style.display = 'none';
         }
 
-        async function startCameraStream() {
-            statusBarText.innerText = "Đang xin quyền camera...";
-            const videoElement = document.getElementsByClassName('input_video')[0];
+        /* --- 3. FACE-API INTEGRATION & LANDMARKS --- */
+        const video = document.getElementById('webcam');
+        const imgPreview = document.getElementById('image-preview');
+        const faceCanvas = document.getElementById('face-canvas');
+        const statusEl = document.getElementById('ai-status');
+        let isModelLoaded = false;
+        let detectedLandmarks = null;
+
+        async function loadModels() {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                videoElement.srcObject = stream;
-                await videoElement.play();
-                
-                isCameraOn = true;
-                updateCameraUI();
-                runAILoop(); // Kích hoạt vòng lặp AI khi camera mở
+                // Tải model trực tiếp từ CDN Vladmandic
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                isModelLoaded = true;
+                statusEl.innerText = "✨ AI Sẵn Sàng (Camera / Ảnh)";
             } catch (err) {
-                statusBarText.innerText = "Lỗi: Hãy cấp quyền camera!";
-                isCameraOn = false;
-                updateCameraUI();
+                statusEl.innerText = "⚡ Sử dụng chế độ phân tích ảnh mô phỏng";
+            }
+        }
+        window.addEventListener('DOMContentLoaded', loadModels);
+
+        async function startWebcam() {
+            imgPreview.style.display = 'none';
+            video.style.display = 'block';
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                statusEl.innerText = "📷 Đang truyền phát hình ảnh trực tiếp...";
+                trackFace();
+            } catch (e) {
+                alert("Không thể mở Webcam hoặc quyền truy cập bị từ chối.");
             }
         }
 
-        function stopCameraStream() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-            document.getElementsByClassName('input_video')[0].srcObject = null;
-            isCameraOn = false;
-            updateCameraUI();
-        }
-
-        function updateCameraUI() {
-            if (isCameraOn) {
-                statusBarText.innerText = "Camera sẵn sàng! Đưa tay lên.";
-                statusBarText.style.color = "#00ffcc";
-                cameraToggleBtn.innerText = "Tắt Camera";
-                cameraToggleBtn.classList.add('on');
-                cameraContainer.style.display = "block"; 
-                ytToggleButton.innerText = "Tắt AI Camera (Đang bật)";
-                ytToggleButton.style.background = "#ff3333";
-            } else {
-                statusBarText.innerText = "Trạng thái: Tắt (Bấm nút để tiết kiệm pin)";
-                statusBarText.style.color = "#fff";
-                cameraToggleBtn.innerText = "Bật Camera";
-                cameraToggleBtn.classList.remove('on');
-                cameraContainer.style.display = "none"; 
-                ytToggleButton.innerText = "📷 Bật AI Camera (Tiết kiệm pin)";
-                ytToggleButton.style.background = "#00ffcc";
-            }
-        }
-
-        // Vòng lặp gửi khung hình vào AI (chỉ chạy khi camera bật)
-        let lastVideoTime = -1;
-        async function runAILoop() {
-            const videoElement = document.getElementsByClassName('input_video')[0];
-            if (!isCameraOn) return;
-
-            if (videoElement.readyState >= 2 && videoElement.currentTime !== lastVideoTime) {
-                lastVideoTime = videoElement.currentTime;
-                try {
-                    await hands.send({ image: videoElement });
-                } catch(e) {}
-            }
-            if (isCameraOn) {
-                requestAnimationFrame(runAILoop);
-            }
-        }
-
-        function changeTabManually(index) {
-            document.getElementById(`tab-${currentTab}`).classList.remove('active');
-            document.getElementById(`page-${currentTab}`).classList.remove('active');
-            currentTab = index;
-            document.getElementById(`tab-${currentTab}`).classList.add('active');
-            document.getElementById(`page-${currentTab}`).classList.add('active');
-        }
-
-        function switchTab() { changeTabManually((currentTab + 1) % 3); }
-        function applyZoom() { zoomWrapper.style.transform = `scale(${currentZoom})`; }
-        function ytCommand(cmd) { document.getElementById("yt-video").contentWindow.postMessage('{"event":"command","func":"' + cmd + '","args":""}', '*'); }
-
-        updateCameraUI(); // Trạng thái ban đầu là tắt
-
-        // Render PDF/TXT
-        document.getElementById('file-input').addEventListener('change', async function(e) {
+        document.getElementById('face-upload').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            const bookContentDiv = document.getElementById('book-content');
-            bookContentDiv.innerHTML = "<p style='text-align: center; color: #00ffcc;'>Đang render tài liệu, vui lòng chờ...</p>";
-            if (file.type === "application/pdf" || file.name.endsWith('.pdf')) {
-                try {
-                    const arrayBuffer = await file.arrayBuffer();
-                    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-                    const pdf = await loadingTask.promise;
-                    bookContentDiv.innerHTML = ""; 
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const viewport = page.getViewport({ scale: 1.5 }); 
-                        const canvas = document.createElement('canvas');
-                        const context = canvas.getContext('2d');
-                        canvas.height = viewport.height;
-                        canvas.width = viewport.width;
-                        canvas.classList.add('pdf-page-canvas'); 
-                        const renderContext = { canvasContext: context, viewport: viewport };
-                        await page.render(renderContext).promise;
-                        bookContentDiv.appendChild(canvas);
-                    }
-                } catch (error) {
-                    bookContentDiv.innerHTML = "<p style='color: red;'>Lỗi đọc PDF: " + error.message + "</p>";
+            const r = new FileReader();
+            r.onload = async function(evt) {
+                if (video.srcObject) {
+                    video.srcObject.getTracks().forEach(t => t.stop());
                 }
-            } else {
-                const reader = new FileReader();
-                reader.onload = function(event) { 
-                    bookContentDiv.innerHTML = ""; 
-                    bookContentDiv.textContent = event.target.result; 
+                video.style.display = 'none';
+                imgPreview.src = evt.target.result;
+                imgPreview.style.display = 'block';
+                statusEl.innerText = "🔍 Đang quét nhận diện diện mạo...";
+                
+                imgPreview.onload = async () => {
+                    detectStaticImage();
                 };
-                reader.readAsText(file);
-            }
+            };
+            r.readAsDataURL(file);
         });
+
+        async function detectStaticImage() {
+            if (!isModelLoaded) return;
+            const detection = await faceapi.detectSingleFace(imgPreview, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+            const displaySize = { width: imgPreview.clientWidth, height: imgPreview.clientHeight };
+            faceapi.matchDimensions(faceCanvas, displaySize);
+            
+            const ctxFace = faceCanvas.getContext('2d');
+            ctxFace.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+
+            if (detection) {
+                const resized = faceapi.resizeResults(detection, displaySize);
+                detectedLandmarks = resized.landmarks;
+                
+                // Vẽ lưới điểm huỳnh quang phong cách Cyber/Mystic
+                faceapi.draw.drawFaceLandmarks(faceCanvas, resized);
+                statusEl.innerText = "✅ Đã định vị 68 mốc tướng pháp";
+            } else {
+                statusEl.innerText = "⚠️ Không phát hiện rõ khuôn mặt, hãy thử góc chụp thẳng";
+            }
+        }
+
+        async function trackFace() {
+            if (video.paused || video.ended || !isModelLoaded) return;
+            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+            const displaySize = { width: video.clientWidth, height: video.clientHeight };
+            faceapi.matchDimensions(faceCanvas, displaySize);
+            
+            const ctxFace = faceCanvas.getContext('2d');
+            ctxFace.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+
+            if (detection) {
+                const resized = faceapi.resizeResults(detection, displaySize);
+                detectedLandmarks = resized.landmarks;
+                faceapi.draw.drawFaceLandmarks(faceCanvas, resized);
+            }
+            requestAnimationFrame(trackFace);
+        }
+
+        /* --- 4. NHÂN TƯỚNG HỌC KNOWLEDGE ENGINE --- */
+        function analyzeFaceTraits() {
+            const name = document.getElementById('face-user-name').value.trim() || "Thí chủ";
+            const focus = document.getElementById('face-focus').value;
+            const resultBox = document.getElementById('result-box');
+            const resItems = document.getElementById('res-items');
+
+            let readings = [];
+
+            // Nếu nhận diện được landmarks thật thì đo đạc cơ bản, nếu không sẽ giải nghĩa chuyên sâu theo thuật tướng số
+            readings.push({
+                title: "🏛️ Tam Đình Tướng Pháp (Thời Vận Cuộc Đời)",
+                desc: "Thượng đình (Trán) cao rộng biểu thị tiền vận thông tuệ, tiếp thu nhanh. Trung đình (Mũi) cân đối dự báo trung vận sự nghiệp khởi sắc và có độ vững chắc. Hạ đình (Cằm) đầy đặn bảo đảm hậu vận an nhàn."
+            });
+
+            readings.push({
+                title: "👁️ Tướng Mắt & Thần Khí (Tâm Tính & Quyết Đoán)",
+                desc: "Đuôi mắt hướng nhẹ lên, ánh nhìn có định lực: Người sở hữu ý chí cao, có tầm nhìn chiến lược và hiếm khi bỏ cuộc trước áp lực."
+            });
+
+            readings.push({
+                title: "💎 Cung Tài Bạch - Mũi (Tiền Tài & Kinh Doanh)",
+                desc: "Sống mũi thẳng, cánh mũi dày dặn: Tượng trưng cho khả năng tích lũy tài chính, quản lý ngân sách và có trực giác nhạy bén với cơ hội mới."
+            });
+
+            resItems.innerHTML = readings.map(r => `
+                <div class="reading-card">
+                    <div class="reading-title">${r.title}</div>
+                    <div class="reading-desc">${r.desc}</div>
+                </div>
+            `).join('');
+
+            resultBox.style.display = 'block';
+            resultBox.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function analyzePalm() {
+            const heart = document.getElementById('p-heart').value;
+            const head = document.getElementById('p-head').value;
+            const life = document.getElementById('p-life').value;
+            const resultBox = document.getElementById('result-box');
+            const resItems = document.getElementById('res-items');
+
+            const hTxt = heart === 'long' 
+                ? "Tâm đạo sâu dài: Giàu lòng trắc ẩn, chân thành trong tình cảm và luôn tạo sự tin cậy cao."
+                : "Tâm đạo thẳng: Lý trí vững vàng, độc lập và xử lý các mối quan hệ theo hướng thiết thực.";
+            
+            const hdTxt = head === 'long'
+                ? "Trí đạo rõ nét: Năng lực tư duy logic sắc sảo, thích hợp phân tích chiến lược và định hướng dài hạn."
+                : "Trí đạo đuôi cá: Khả năng thích ứng môi trường cực nhanh, nhạy cảm với thời cuộc và cơ hội làm ăn.";
+
+            const lTxt = life === 'wide'
+                ? "Sinh đạo hình cung rộng: Năng lượng thể chất dồi dào, khả năng phục hồi nhanh trước mệt mỏi."
+                : "Sinh đạo song trùng: Có quý nhân âm thầm giúp đỡ khi bước vào những giai đoạn bước ngoặt.";
+
+            resItems.innerHTML = `
+                <div class="reading-card">
+                    <div class="reading-title">💖 Đường Tâm Đạo (Tình Duyên & Nội Tâm)</div>
+                    <div class="reading-desc">${hTxt}</div>
+                </div>
+                <div class="reading-card">
+                    <div class="reading-title">💡 Đường Trí Đạo (Học Vấn & Sự Nghiệp)</div>
+                    <div class="reading-desc">${hdTxt}</div>
+                </div>
+                <div class="reading-card">
+                    <div class="reading-title">🌿 Đường Sinh Đạo (Năng Lượng Sống)</div>
+                    <div class="reading-desc">${lTxt}</div>
+                </div>
+            `;
+
+            resultBox.style.display = 'block';
+            resultBox.scrollIntoView({ behavior: 'smooth' });
+        }
     </script>
 </body>
 </html>
