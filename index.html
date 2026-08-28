@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Live Builder - Powered by Gemini Pro</title>
+    <title>AI Live Builder - Powered by Gemini 3.1 Pro</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #1e1e1e; color: #fff; }
@@ -24,18 +24,16 @@
 <body>
 
     <div class="header">
-        <h1>🚀 AI Live Web Builder</h1>
+        <h1>🚀 AI Live Web Builder (Gemini 3.1 Pro)</h1>
         <input type="password" id="apiKey" class="api-input" placeholder="Dán API Key Gemini của bạn vào đây...">
     </div>
 
     <div class="container">
-        <!-- Khu vực nhập lệnh -->
         <div class="panel left-panel">
             <textarea id="prompt" placeholder="Nhập yêu cầu thiết kế...&#10;&#10;Ví dụ: Tạo một thẻ giới thiệu sản phẩm (Card) phong cách hiện đại cho thương hiệu nước trái cây Fruzii, có hình ảnh minh họa, tên sản phẩm, mô tả ngắn gọn và nút 'Đặt hàng ngay' màu cam nhấp nháy."></textarea>
             <button id="generateBtn">Tạo Code & Xem trước ngay</button>
         </div>
 
-        <!-- Khu vực hiển thị kết quả -->
         <div class="panel right-panel">
             <iframe id="preview" srcdoc="<div style='font-family:sans-serif; text-align:center; margin-top:20%; color:#666;'>Kết quả hiển thị tại đây...</div>"></iframe>
         </div>
@@ -64,7 +62,8 @@
             const systemPrompt = "Bạn là một lập trình viên Frontend xuất sắc. Hãy viết toàn bộ mã HTML, CSS và JavaScript (nếu có) chung vào một cấu trúc HTML duy nhất để thực hiện yêu cầu của người dùng. Chỉ trả về phần code nằm trong dấu backtick html, tuyệt đối không giải thích hay nói thêm bất kỳ từ nào khác ngoài code.";
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+                // Đã gọi đích danh mô hình gemini-3.1-pro-preview
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
